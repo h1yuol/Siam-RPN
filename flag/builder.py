@@ -94,14 +94,17 @@ class FlagBuilder:
             gallery[ind] = img
         return gallery
 
-    def center_insert_flag(self, img, flag, scale=0.25):
+    def center_insert_flag(self, img, flag, scale=0.25, random=False):
         size = min(img.shape[:2])
         flag_height = size * scale
         flag_scale = np.random.uniform(0.7, 1.3)
         flag_width = int(flag_height * flag_scale)
         flag_height = int(flag_height)
 
-        pos = ((size - flag_height)//2 , (size - flag_width)//2)
+        if random:
+            pos = (np.random.choice(size-flag_height), np.random.choice(size-flag_width))
+        else:
+            pos = ((size - flag_height)//2 , (size - flag_width)//2)
         bbox = [pos[1],pos[0],pos[1]+flag_width,pos[0]+flag_height]  # xmin, ymin, xmax, ymax
 
         flag = np.array(self.transforms(flag))
@@ -151,3 +154,39 @@ class FlagBuilder:
         jsonStr = json.dumps(infoList)
         with open(str(self.dataset_dir / phase / 'infoList.json'), 'w') as hd:
             hd.write(jsonStr)
+
+    def build_test_dataset(self, name, iter_img_paths, scaleRange=None):
+        self.dataset_dir = self.root_dir / 'data' / name
+        assert self.dataset_dir.exists()
+        
+        phase = 'test'
+        imgs_dir = self.dataset_dir / phase / 'imgs'
+        imgs_dir.mkdir()
+
+        gallery = self.load_gallery(phase)
+        flagIndices = list(gallery.keys())
+        infoList = []
+        for idx, path in tqdm(enumerate(iter_img_paths)):
+            img = self.load_image(str(path))
+            flagIdx = np.random.choice(flagIndices)
+            flag = gallery[flagIdx].copy()
+            if scaleRange is None:
+                scale = 0.25
+            img, bbox = self.center_insert_flag(img, flag, scale, random=True)
+            save_path = imgs_dir / '{}.png'.format(idx)
+            self.save_image(img, str(save_path))
+            info = {
+                'index': idx,
+                'label': int(flagIdx),
+                'path': str(save_path),
+                'source': str(path),
+                'bbox': bbox,
+            }
+            infoList.append(info)
+        import json
+        jsonStr = json.dumps(infoList)
+        with open(str(self.dataset_dir / phase / 'infoList.json'), 'w') as hd:
+            hd.write(jsonStr)
+
+
+
