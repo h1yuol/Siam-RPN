@@ -65,10 +65,10 @@ class SiameseRPN(nn.Module):
         normal_init(self.conv2, 0, 0.01, False)
         normal_init(self.conv3, 0, 0.01, False)
         normal_init(self.conv4, 0, 0.01, False)
-        normal_init(self.cconv, 0, 0.01, False, False)
-        normal_init(self.rconv, 0, 0.01, False, False)
+        normal_init(self.cconv, 0, 0.001, False, False)
+        normal_init(self.rconv, 0, 0.001, False, False)
             
-    def forward(self, template, detection):
+    def forward(self, template, detection, debug=False):
         template = self.features(template)
         detection = self.features(detection)
         
@@ -88,6 +88,8 @@ class SiameseRPN(nn.Module):
 #        rinput = self.relu4(rinput)
         routput = self.rconv(rinput)
         
+        if debug:
+            return coutput, routput,ckernal,rkernal,self.conv1.weight,template,cinput,detection
         return coutput, routput
 
 #%%
