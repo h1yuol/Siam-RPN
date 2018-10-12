@@ -46,6 +46,27 @@ class SiameseRPN(nn.Module):
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
         model_dict.update(pretrained_dict)
         self.load_state_dict(model_dict)
+        self._init_weights()
+
+    def _init_weights(self):
+        def normal_init(m, mean, stddev, truncated=False, bias=True):
+            """
+            weight initalizer: truncated normal and random normal.
+            """
+            # x is a parameter
+            if truncated:
+                m.weight.data.normal_().fmod_(2).mul_(stddev).add_(mean) # not a perfect approximation
+            else:
+                m.weight.data.normal_(mean, stddev)
+                if bias:
+                    m.bias.data.zero_()
+
+        normal_init(self.conv1, 0, 0.01, False)
+        normal_init(self.conv2, 0, 0.01, False)
+        normal_init(self.conv3, 0, 0.01, False)
+        normal_init(self.conv4, 0, 0.01, False)
+        normal_init(self.cconv, 0, 0.01, False, False)
+        normal_init(self.rconv, 0, 0.01, False, False)
             
     def forward(self, template, detection):
         template = self.features(template)
