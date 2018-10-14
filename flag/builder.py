@@ -115,6 +115,65 @@ class FlagBuilder:
         img[bbox[1]:bbox[3], bbox[0]:bbox[2]] += flag
         return img[:size, :size], bbox
 
+    def build(self, name, iter_img_paths, exist_ok=False, num_train_classes=100, num_test_classes=100, 
+                scaleRange=None):
+        self.dataset_dir = self.root_dir / 'data' / name
+        try:
+            self.dataset_dir.mkdir(exist_ok=exist_ok)
+        except:
+            raise Exception("{} exists!".format(name))
+
+        self.build_randomGallery(num_train_classes, num_test_classes)
+        print("Built train and test galleries!")
+
+        train_gallery = self.load_gallery('train')
+        test_gallery = self.load_gallery('test')
+        flagIndicesDict = {
+            'train': list(train_gallery.keys()),
+            'test': list(test_gallery.keys()),
+        }
+        for phase in ['train','validation','test']:
+            (self.dataset_dir / phase / 'imgs').mkdir(parents=True)
+        infoListDict = {
+            'train': [],
+            'validation': [],
+            'test': [],
+        }
+
+        for idx, path in tqdm(enumerate(iter_img_paths)):
+            img = self.load_image(str(path))
+            for phase in ['train','validation','test']:
+                if phase in ['train','validation']:
+                    gallery = train_gallery
+                    flagIndices = flagIndicesDict['train']
+                else:
+                    gallery = test_gallery
+                    flagIndices = flagIndicesDict['test']
+                imgs_dir = self.dataset_dir / phase / 'imgs'
+                flagIdx = np.random.choice(flagIndices)
+                flag = gallery[flagIdx].copy()
+                if scaleRange is None:
+                    scale = 0.25
+                else:
+                    scale = np.random.uniform(scaleRange[0], scaleRange[1])
+                img, bbox = self.center_insert_flag(img, flag, scale, random=True)
+                save_path = imgs_dir / '{}.png'.format(idx)
+                self.save_image(img, str(save_path))
+                info = {
+                    'index': idx,
+                    'label': int(flagIdx),
+                    'path': str(save_path),
+                    'source': str(path),
+                    'bbox': bbox,
+                    'phase': phase,
+                }
+                infoListDict[phase].append(info)
+        import json
+        for phase in ['train','validation','test']:
+            jsonStr = json.dumps(infoListDict[phase])
+            with open(str(self.dataset_dir / phase / 'infoList.json'), 'w') as hd:
+                hd.write(jsonStr)
+
     def build_train_dataset(self, name, iter_img_paths, exist_ok=False, num_train_classes=100, num_test_classes=100, 
                 scaleRange=None):
         self.dataset_dir = self.root_dir / 'data' / name
@@ -140,6 +199,39 @@ class FlagBuilder:
             if scaleRange is None:
                 scale = 0.25
             img, bbox = self.center_insert_flag(img, flag, scale)
+            save_path = imgs_dir / '{}.png'.format(idx)
+            self.save_image(img, str(save_path))
+            info = {
+                'index': idx,
+                'label': int(flagIdx),
+                'path': str(save_path),
+                'source': str(path),
+                'bbox': bbox,
+            }
+            infoList.append(info)
+        import json
+        jsonStr = json.dumps(infoList)
+        with open(str(self.dataset_dir / phase / 'infoList.json'), 'w') as hd:
+            hd.write(jsonStr)
+
+    def build_val_dataset(self, name, iter_img_paths, scaleRange=None):
+        self.dataset_dir = self.root_dir / 'data' / name
+        assert self.dataset_dir.exists()
+        
+        phase = 'validation'
+        imgs_dir = self.dataset_dir / phase / 'imgs'
+        imgs_dir.mkdir(parents=True)
+
+        gallery = self.load_gallery('train')
+        flagIndices = list(gallery.keys())
+        infoList = []
+        for idx, path in tqdm(enumerate(iter_img_paths)):
+            img = self.load_image(str(path))
+            flagIdx = np.random.choice(flagIndices)
+            flag = gallery[flagIdx].copy()
+            if scaleRange is None:
+                scale = 0.25
+            img, bbox = self.center_insert_flag(img, flag, scale, random=True)
             save_path = imgs_dir / '{}.png'.format(idx)
             self.save_image(img, str(save_path))
             info = {
