@@ -141,14 +141,16 @@ class FlagBuilder:
         }
 
         for idx, path in tqdm(enumerate(iter_img_paths)):
-            img = self.load_image(str(path))
+            image = self.load_image(str(path))
             for phase in ['train','validation','test']:
                 if phase in ['train','validation']:
                     gallery = train_gallery
                     flagIndices = flagIndicesDict['train']
+                    img = image.copy()
                 else:
                     gallery = test_gallery
                     flagIndices = flagIndicesDict['test']
+                    img = image
                 imgs_dir = self.dataset_dir / phase / 'imgs'
                 flagIdx = np.random.choice(flagIndices)
                 flag = gallery[flagIdx].copy()
