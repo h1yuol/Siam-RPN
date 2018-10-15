@@ -61,12 +61,12 @@ class SiameseRPN(nn.Module):
                 if bias:
                     m.bias.data.zero_()
 
-        normal_init(self.conv1, 0, 0.01, False)
-        normal_init(self.conv2, 0, 0.01, False)
-        normal_init(self.conv3, 0, 0.01, False)
-        normal_init(self.conv4, 0, 0.01, False)
-        normal_init(self.cconv, 0, 0.001, False, False)
-        normal_init(self.rconv, 0, 0.001, False, False)
+        normal_init(self.conv1, 0, 0.001, False)
+        normal_init(self.conv2, 0, 0.001, False)
+        normal_init(self.conv3, 0, 0.001, False)
+        normal_init(self.conv4, 0, 0.001, False)
+        # normal_init(self.cconv, 0, 0.001, False, False)
+        # normal_init(self.rconv, 0, 0.001, False, False)
             
     def forward(self, template, detection, debug=False):
         template = self.features(template)
