@@ -83,7 +83,8 @@ def x1y1wh_to_x1y1x2y2(gtbox):
     x1, y1, w, h = gtbox
     return [x1, y1, x1+w, y1+h]
 
-
+def clip_anchor(x1y1x2y2, size=255):
+    return list(map(lambda num: min(size, max(0, num)), x1y1x2y2))
 
 
 
