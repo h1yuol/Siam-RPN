@@ -116,7 +116,7 @@ class FlagBuilder:
         return img[:size, :size], bbox
 
     def build(self, name, iter_img_paths, exist_ok=False, num_train_classes=100, num_test_classes=100, 
-                scaleRange=None):
+                scaleRange=None,iter_loop=1):
         self.dataset_dir = self.root_dir / 'data' / name
         try:
             self.dataset_dir.mkdir(exist_ok=exist_ok)
@@ -143,33 +143,38 @@ class FlagBuilder:
         for idx, path in tqdm(enumerate(iter_img_paths)):
             image = self.load_image(str(path))
             for phase in ['train','validation','test']:
-                if phase in ['train','validation']:
-                    gallery = train_gallery
-                    flagIndices = flagIndicesDict['train']
-                    img = image.copy()
+                if phase=='train':
+                    loop = iter_loop
                 else:
-                    gallery = test_gallery
-                    flagIndices = flagIndicesDict['test']
-                    img = image
-                imgs_dir = self.dataset_dir / phase / 'imgs'
-                flagIdx = np.random.choice(flagIndices)
-                flag = gallery[flagIdx].copy()
-                if scaleRange is None:
-                    scale = 0.25
-                else:
-                    scale = np.random.uniform(scaleRange[0], scaleRange[1])
-                img, bbox = self.center_insert_flag(img, flag, scale, random=True)
-                save_path = imgs_dir / '{}.png'.format(idx)
-                self.save_image(img, str(save_path))
-                info = {
-                    'index': idx,
-                    'label': int(flagIdx),
-                    'path': str(save_path),
-                    'source': str(path),
-                    'bbox': bbox,
-                    'phase': phase,
-                }
-                infoListDict[phase].append(info)
+                    loop = 1
+                for i in range(loop):
+                    if phase in ['train','validation']:
+                        gallery = train_gallery
+                        flagIndices = flagIndicesDict['train']
+                        img = image.copy()
+                    else:
+                        gallery = test_gallery
+                        flagIndices = flagIndicesDict['test']
+                        img = image.copy()
+                    imgs_dir = self.dataset_dir / phase / 'imgs'
+                    flagIdx = np.random.choice(flagIndices)
+                    flag = gallery[flagIdx].copy()
+                    if scaleRange is None:
+                        scale = 0.25
+                    else:
+                        scale = np.random.uniform(scaleRange[0], scaleRange[1])
+                    img, bbox = self.center_insert_flag(img, flag, scale, random=True)
+                    save_path = imgs_dir / '{}-{}.png'.format(idx,i)
+                    self.save_image(img, str(save_path))
+                    info = {
+                        # 'index': idx,
+                        'label': int(flagIdx),
+                        'path': str(save_path),
+                        'source': str(path),
+                        'bbox': bbox,
+                        'phase': phase,
+                    }
+                    infoListDict[phase].append(info)
         import json
         for phase in ['train','validation','test']:
             jsonStr = json.dumps(infoListDict[phase])
