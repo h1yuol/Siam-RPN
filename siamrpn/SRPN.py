@@ -7,11 +7,15 @@ class SiameseRPN(nn.Module):
         self.k = 5
         self._build()
         self.reset_params()
+        self._fix_layers()
 
     def _build(self):
     	raise NotImplementedError	
         
     def reset_params(self):
+        raise NotImplementedError
+
+    def _fix_layers(self):
         raise NotImplementedError
 
     def _init_weights(self):

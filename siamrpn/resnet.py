@@ -214,7 +214,13 @@ def resnet152(pretrained=False):
 class resnet(SiameseRPN):
     def __init__(self, num_layers):
         self.num_layers = num_layers
-        self.channel_depth = 1024
+        self.channel_depth = {
+            18: 256,
+            34: 1024,
+            50: 1024,
+            101: 1024,
+            152: 1024,
+        }[num_layers]
         SiameseRPN.__init__(self)
 
     def _build(self):
@@ -242,6 +248,13 @@ class resnet(SiameseRPN):
         self.features.load_state_dict(model_dict)
 
         self._init_weights()
+
+    def _fix_layers(self):
+        fix_layers = [0,1,4]
+        for i in fix_layers:
+            layer = self.features[i]
+            for param in layer.parameters():
+                param.requires_grad = False
 
 
 if __name__ == '__main__':
@@ -271,7 +284,7 @@ if __name__ == '__main__':
     #     x = base(x)
     #     print('size:',size,x.size())
 
-    model = resnet(50)
+    model = resnet(34)
     template = torch.randn(1,3,96,96)
     detection = torch.randn(1,3,340,340)
     coutput, routput = model(template, detection)

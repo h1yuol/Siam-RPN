@@ -47,6 +47,13 @@ class alexnet(SiameseRPN):
 
         self._init_weights()
 
+    def _fix_layers(self):
+        fix_layers = [0,3,6]
+        for i in fix_layers:
+            layer = self.features[i]
+            for param in layer.parameters():
+                param.requires_grad = False
+
 if __name__ == '__main__':
     model = alexnet()
     template = torch.randn(1,3,127,127)
