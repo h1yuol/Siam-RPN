@@ -216,7 +216,7 @@ class resnet(SiameseRPN):
         self.num_layers = num_layers
         self.channel_depth = {
             18: 256,
-            34: 1024,
+            34: 256,
             50: 1024,
             101: 1024,
             152: 1024,
