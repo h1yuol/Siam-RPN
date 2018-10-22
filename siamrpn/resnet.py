@@ -247,6 +247,12 @@ class resnet(SiameseRPN):
         model_dict.update(pretrained_dict)
         self.features.load_state_dict(model_dict)
 
+        def set_bn_fix(m):
+            classname = m.__class__.__name__
+            if classname.find('BatchNorm') != -1:
+                for p in m.parameters(): p.requires_grad=False
+        self.features.apply(set_bn_fix)
+
         self._init_weights()
 
     def _fix_layers(self):
