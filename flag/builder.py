@@ -94,6 +94,41 @@ class FlagBuilder:
             gallery[ind] = img
         return gallery
 
+    def random_insert_flag(self, img, flag, scale=0.25, prevbboxes=None):
+        size = min(img.shape[:2])
+        flag_height = size * scale
+        flag_scale = np.random.uniform(0.7, 1.3)
+        flag_width = int(flag_height * flag_scale)
+        flag_height = int(flag_height)
+
+        while True:
+            pos = (np.random.choice(size-flag_height), np.random.choice(size-flag_width))
+            bbox = [pos[1],pos[0],pos[1]+flag_width,pos[0]+flag_height]  # xmin, ymin, xmax, ymax
+            overlap = False
+            if prevbboxes is not None:
+                for prevbbox in prevbboxes:
+                    iou = bb_intersection_over_union(prevbbox, bbox)
+                    if iou > 0.1:
+                        overlap = True
+                        break
+            if not overlap:
+                break
+        flag = np.array(self.transforms(flag))
+        flag = cv2.resize(flag, dsize=(flag_width, flag_height))
+
+        mask = (flag==0)
+        img[bbox[1]:bbox[3], bbox[0]:bbox[2]] *= mask
+        img[bbox[1]:bbox[3], bbox[0]:bbox[2]] += flag
+        return img[:size, :size], bbox
+    
+    def random_insert_multiflags(self, img, flagList, scaleRange):
+        bboxList = []
+        for flag in flagList:
+            scale = np.random.uniform(scaleRange[0], scaleRange[1])
+            img, bbox = self.random_insert_flag(img, flag.copy(), scale=scale, prevbboxes=bboxList)
+            bboxList.append(bbox)
+        return img, bboxList
+
     def center_insert_flag(self, img, flag, scale=0.25, random=False):
         size = min(img.shape[:2])
         flag_height = size * scale
@@ -115,7 +150,7 @@ class FlagBuilder:
         img[bbox[1]:bbox[3], bbox[0]:bbox[2]] += flag
         return img[:size, :size], bbox
 
-    def build(self, name, iter_img_paths, exist_ok=False, num_train_classes=100, num_test_classes=100, 
+    def build(self, name, iter_img_paths, num_flags=1, exist_ok=False, num_train_classes=100, num_test_classes=100, 
                 scaleRange=None,iter_loop=1):
         self.dataset_dir = self.root_dir / 'data' / name
         try:
@@ -157,24 +192,45 @@ class FlagBuilder:
                         flagIndices = flagIndicesDict['test']
                         img = image.copy()
                     imgs_dir = self.dataset_dir / phase / 'imgs'
-                    flagIdx = np.random.choice(flagIndices)
-                    flag = gallery[flagIdx].copy()
+                    flagIndices = np.random.choice(flagIndices,size=num_flags)
+                    flagList = list(map(lambda idx: gallery[idx], flagIndices))
                     if scaleRange is None:
                         scale = 0.25
+                        img, bboxList = self.random_insert_multiflags(img,flagList,[scale-0.05,scale+0.05])
                     else:
-                        scale = np.random.uniform(scaleRange[0], scaleRange[1])
-                    img, bbox = self.center_insert_flag(img, flag, scale, random=True)
+                        img, bboxList = self.random_insert_multiflags(img,flagList,scaleRange)
                     save_path = imgs_dir / '{}-{}.png'.format(idx,i)
                     self.save_image(img, str(save_path))
                     info = {
                         # 'index': idx,
-                        'label': int(flagIdx),
+                        'labelList': flagIndices.tolist(),
                         'path': str(save_path),
                         'source': str(path),
-                        'bbox': bbox,
+                        'bboxList': bboxList,
                         'phase': phase,
                     }
                     infoListDict[phase].append(info)
+
+
+
+                    # flagIdx = np.random.choice(flagIndices,size=num_flags)
+                    # flag = gallery[flagIdx].copy()
+                    # if scaleRange is None:
+                    #     scale = 0.25
+                    # else:
+                    #     scale = np.random.uniform(scaleRange[0], scaleRange[1])
+                    # img, bbox = self.center_insert_flag(img, flag, scale, random=True)
+                    # save_path = imgs_dir / '{}-{}.png'.format(idx,i)
+                    # self.save_image(img, str(save_path))
+                    # info = {
+                    #     # 'index': idx,
+                    #     'label': int(flagIdx),
+                    #     'path': str(save_path),
+                    #     'source': str(path),
+                    #     'bbox': bbox,
+                    #     'phase': phase,
+                    # }
+                    # infoListDict[phase].append(info)
         import json
         for phase in ['train','validation','test']:
             jsonStr = json.dumps(infoListDict[phase])
