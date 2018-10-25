@@ -2,9 +2,10 @@ import torch
 import torch.nn as nn
 
 class SiameseRPN(nn.Module):
-    def __init__(self):
+    def __init__(self,pseudo):
         super(SiameseRPN, self).__init__()
         self.k = 5
+        self.pseudo = pseudo
         self._build()
         self.reset_params()
         self._fix_layers()
@@ -39,7 +40,10 @@ class SiameseRPN(nn.Module):
         # normal_init(self.rconv, 0, 0.001, False, False)
             
     def forward(self, template, detection, debug=False):
-        template = self.features(template)
+        if self.pseudo:
+            template = self.features2(template)
+        else:
+            template = self.features(template)
         detection = self.features(detection)
         
         ckernal = self.conv1(template)

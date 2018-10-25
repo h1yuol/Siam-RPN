@@ -212,7 +212,7 @@ def resnet152(pretrained=False):
   return model
 
 class resnet(SiameseRPN):
-    def __init__(self, num_layers):
+    def __init__(self, num_layers,pseudo=False):
         self.num_layers = num_layers
         self.channel_depth = {
             18: 256,
@@ -221,12 +221,18 @@ class resnet(SiameseRPN):
             101: 1024,
             152: 1024,
         }[num_layers]
-        SiameseRPN.__init__(self)
+        SiameseRPN.__init__(self,pseudo=pseudo)
 
     def _build(self):
         resnet = eval('resnet{}'.format(self.num_layers))()
         self.features = nn.Sequential(resnet.conv1, resnet.bn1,resnet.relu,
                         resnet.maxpool,resnet.layer1,resnet.layer2,resnet.layer3)
+        if self.pseudo:
+            # from copy import deep_copy
+            # self.features2 = deep_copy(self.features)
+            resnet2 = eval('resnet{}'.format(self.num_layers))()
+            self.features2 = nn.Sequential(resnet2.conv1, resnet2.bn1,resnet2.relu,
+                            resnet2.maxpool,resnet2.layer1,resnet2.layer2,resnet2.layer3)
 
         self.conv1 = nn.Conv2d(self.channel_depth, 2*self.k*self.channel_depth, kernel_size=3)
         # self.relu1 = nn.ReLU(inplace=True)
@@ -246,12 +252,16 @@ class resnet(SiameseRPN):
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
         model_dict.update(pretrained_dict)
         self.features.load_state_dict(model_dict)
+        if self.pseudo:
+            self.features2.load_state_dict(model_dict)
 
         def set_bn_fix(m):
             classname = m.__class__.__name__
             if classname.find('BatchNorm') != -1:
                 for p in m.parameters(): p.requires_grad=False
         self.features.apply(set_bn_fix)
+        if self.pseudo:
+            self.features2.apply(set_bn_fix)
 
         self._init_weights()
 
@@ -261,6 +271,10 @@ class resnet(SiameseRPN):
             layer = self.features[i]
             for param in layer.parameters():
                 param.requires_grad = False
+            if self.pseudo:
+                layer = self.features2[i]
+                for param in layer.parameters():
+                    param.requires_grad = False
 
 
 if __name__ == '__main__':
