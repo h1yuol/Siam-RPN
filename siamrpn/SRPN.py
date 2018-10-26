@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class SiameseRPN(nn.Module):
     def __init__(self,pseudo):
@@ -39,6 +40,33 @@ class SiameseRPN(nn.Module):
         # normal_init(self.cconv, 0, 0.001, False, False)
         # normal_init(self.rconv, 0, 0.001, False, False)
             
+#     def forward(self, template, detection, debug=False):
+#         if self.pseudo:
+#             template = self.features2(template)
+#         else:
+#             template = self.features(template)
+#         detection = self.features(detection)
+        
+#         ckernal = self.conv1(template)
+# #        ckernal = self.relu1(ckernal)
+#         ckernal = ckernal.view(2* self.k, self.channel_depth, 4, 4)
+#         self.cconv.weight = nn.Parameter(ckernal)
+#         cinput = self.conv3(detection)
+# #        cinput = self.relu3(cinput)
+#         coutput = self.cconv(cinput)
+        
+#         rkernal = self.conv2(template)
+# #        rkernal = self.relu2(rkernal)
+#         rkernal = rkernal.view(4* self.k, self.channel_depth, 4, 4)
+#         self.rconv.weight = nn.Parameter(rkernal)
+#         rinput = self.conv4(detection)
+# #        rinput = self.relu4(rinput)
+#         routput = self.rconv(rinput)
+        
+#         if debug:
+#             return coutput, routput,ckernal,rkernal,self.conv1.weight,template,cinput,detection
+#         return coutput, routput
+
     def forward(self, template, detection, debug=False):
         if self.pseudo:
             template = self.features2(template)
@@ -46,22 +74,28 @@ class SiameseRPN(nn.Module):
             template = self.features(template)
         detection = self.features(detection)
         
+        N = template.size()[0]
+
         ckernal = self.conv1(template)
-#        ckernal = self.relu1(ckernal)
-        ckernal = ckernal.view(2* self.k, self.channel_depth, 4, 4)
-        self.cconv.weight = nn.Parameter(ckernal)
+        ckernal = ckernal.view(N*2*self.k, self.channel_depth, 4, 4)
         cinput = self.conv3(detection)
-#        cinput = self.relu3(cinput)
-        coutput = self.cconv(cinput)
-        
+        cinput = cinput.view(1, self.channel_depth*N, 20, 20)
+        coutput = F.conv2d(cinput, ckernal, bias=None, groups=N)  # shape (1, 2k*N, 17, 17)
+        coutput = coutput.view(N, 2*self.k, 17, 17)
+
         rkernal = self.conv2(template)
-#        rkernal = self.relu2(rkernal)
-        rkernal = rkernal.view(4* self.k, self.channel_depth, 4, 4)
-        self.rconv.weight = nn.Parameter(rkernal)
+        rkernal = rkernal.view(N*4*self.k, self.channel_depth, 4, 4)
         rinput = self.conv4(detection)
-#        rinput = self.relu4(rinput)
-        routput = self.rconv(rinput)
-        
+        rinput = rinput.view(1, self.channel_depth*N, 20, 20)
+        routput = F.conv2d(rinput, rkernal, bias=None, groups=N)  # shape (1, 4k*N, 17, 17)
+        routput = routput.view(N, 4*self.k, 17, 17)
+
         if debug:
-            return coutput, routput,ckernal,rkernal,self.conv1.weight,template,cinput,detection
+            # raise NotImplementedError
+            return coutput, routput, template, detection, ckernal, cinput, rkernal, rinput
         return coutput, routput
+
+
+
+
+
