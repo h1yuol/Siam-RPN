@@ -28,7 +28,7 @@ def conv3x3(in_planes, out_planes, stride=1):
 class BasicBlock(nn.Module):
   expansion = 1
 
-  def __init__(self, inplanes, planes, stride=1, downsample=None, num_groups=32, GN=True):
+  def __init__(self, inplanes, planes, stride=1, downsample=None, num_groups=32, GN=False):
     super(BasicBlock, self).__init__()
     self.GN = GN
     self.num_groups = num_groups
@@ -63,7 +63,7 @@ class BasicBlock(nn.Module):
 class Bottleneck(nn.Module):
   expansion = 4
 
-  def __init__(self, inplanes, planes, stride=1, downsample=None, num_groups=32, GN=True):
+  def __init__(self, inplanes, planes, stride=1, downsample=None, num_groups=32, GN=False):
     super(Bottleneck, self).__init__()
     self.GN = GN
     self.num_groups = num_groups
@@ -103,7 +103,7 @@ class Bottleneck(nn.Module):
 
 
 class ResNet(nn.Module):
-  def __init__(self, block, layers, num_classes=1000, num_groups=32, GN=True):
+  def __init__(self, block, layers, num_classes=1000, num_groups=32, GN=False):
     self.GN = GN
     self.num_groups = num_groups
     self.inplanes = 64
@@ -166,7 +166,7 @@ class ResNet(nn.Module):
     return x
 
 
-def resnet18(pretrained=False, num_groups=32, GN=True):
+def resnet18(pretrained=False, num_groups=32, GN=False):
   """Constructs a ResNet-18 model.
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -177,7 +177,7 @@ def resnet18(pretrained=False, num_groups=32, GN=True):
   return model
 
 
-def resnet34(pretrained=False, num_groups=32, GN=True):
+def resnet34(pretrained=False, num_groups=32, GN=False):
   """Constructs a ResNet-34 model.
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -188,7 +188,7 @@ def resnet34(pretrained=False, num_groups=32, GN=True):
   return model
 
 
-def resnet50(pretrained=False, num_groups=32, GN=True):
+def resnet50(pretrained=False, num_groups=32, GN=False):
   """Constructs a ResNet-50 model.
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -199,7 +199,7 @@ def resnet50(pretrained=False, num_groups=32, GN=True):
   return model
 
 
-def resnet101(pretrained=False, num_groups=32, GN=True):
+def resnet101(pretrained=False, num_groups=32, GN=False):
   """Constructs a ResNet-101 model.
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -210,7 +210,7 @@ def resnet101(pretrained=False, num_groups=32, GN=True):
   return model
 
 
-def resnet152(pretrained=False, num_groups=32, GN=True):
+def resnet152(pretrained=False, num_groups=32, GN=False):
   """Constructs a ResNet-152 model.
   Args:
     pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -221,7 +221,7 @@ def resnet152(pretrained=False, num_groups=32, GN=True):
   return model
 
 class resnet(SiameseRPN):
-    def __init__(self, num_layers,pseudo=False, num_groups=32, GN=True):
+    def __init__(self, num_layers,pseudo=False, num_groups=32, GN=False):
         self.num_layers = num_layers
         self.channel_depth = {
             18: 256,
@@ -254,8 +254,9 @@ class resnet(SiameseRPN):
         self.conv4 = nn.Conv2d(self.channel_depth, self.channel_depth, kernel_size=3)
         # self.relu4 = nn.ReLU(inplace=True)
 
-        self.cconv = nn.Conv2d(self.channel_depth, 2* self.k, kernel_size = 4, bias = False)
-        self.rconv = nn.Conv2d(self.channel_depth, 4* self.k, kernel_size = 4, bias = False)
+        # self.cconv = nn.Conv2d(self.channel_depth, 2* self.k, kernel_size = 4, bias = False)
+        # self.rconv = nn.Conv2d(self.channel_depth, 4* self.k, kernel_size = 4, bias = False)
+
 
     def reset_params(self):
         pretrained_dict = model_zoo.load_url(model_urls['resnet{}'.format(self.num_layers)])
@@ -315,9 +316,10 @@ if __name__ == '__main__':
     #     x = base(x)
     #     print('size:',size,x.size())
 
-    model = resnet(34)
-    template = torch.randn(1,3,96,96)
-    detection = torch.randn(1,3,340,340)
+    model = resnet(34,GN=False)
+    N = 32
+    template = torch.randn(N,3,96,96)
+    detection = torch.randn(N,3,340,340)
     coutput, routput = model(template, detection)
     from IPython import embed
     embed()
