@@ -86,6 +86,17 @@ def x1y1wh_to_x1y1x2y2(gtbox):
 def clip_anchor(x1y1x2y2, size):
     return list(map(lambda num: min(size, max(0, num)), x1y1x2y2))
 
+def xywh_to_x1y1x2y2_torch(xywh):
+    """
+    Input: 
+        xywh: (N, k, 4, 17, 17)
+        transform in-place!
+    """
+    xywh[:,:,0] = xywh[:,:,0] - xywh[:,:,2]/2
+    xywh[:,:,1] = xywh[:,:,1] - xywh[:,:,3]/2
+    xywh[:,:,2] = xywh[:,:,0] + xywh[:,:,2]
+    xywh[:,:,3] = xywh[:,:,1] + xywh[:,:,3]
+
 
 
 
