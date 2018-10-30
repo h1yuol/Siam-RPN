@@ -118,7 +118,7 @@ def get_anchors(k, grid_len, detection_size, anchor_shape, cuda=False):
 def nms(boxes, scores, overlap=0.5, top_k=200):
     """
     Input:
-        - boxes: (-1, 4)
+        - boxes: (-1, 4)  x1y1x2y2
         - scores: (-1, )
         - overlap: (float) The overlap thresh for suppressing unnecessary boxes.
         - top_k: (int) The Maximum number of box preds to consider.
@@ -135,7 +135,7 @@ def nms(boxes, scores, overlap=0.5, top_k=200):
     v, idx = scores.sort(0)  # sort in ascending order
     # I = I[v >= 0.01]
     idx = idx[-top_k:]  # indices of the top-k largest vals
-    xx1 = boxes.new()
+    xx1 = boxes.new()  # tensor.new() return a new tensor of same data type within same device
     yy1 = boxes.new()
     xx2 = boxes.new()
     yy2 = boxes.new()
