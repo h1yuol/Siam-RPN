@@ -85,6 +85,9 @@ class FlagBuilder:
                 img = flagGen.getRandomFlag(size)
                 self.save_image(img, str(gallery_dir/'{}.png'.format(idx)))
 
+    def build_countryFlagGallery(self):
+        raise NotImplementedError
+
     def load_gallery(self, phase):
         gallery_dir = self.dataset_dir / phase / 'gallery'
         gallery = {}
