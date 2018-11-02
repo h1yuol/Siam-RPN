@@ -6,6 +6,8 @@ from PIL import Image
 import cv2
 from tqdm import tqdm
 import datetime
+import shutil
+import json
 
 from torchvision import transforms
 
@@ -90,31 +92,71 @@ class FlagBuilder:
         from urllib.request import urlretrieve
         df = pd.read_csv('flag/Country_Flags.csv')
         N = len(df)
-        indices_train = set(np.random.choice(np.arange(N), size=N//2,replace=False))
+        indices = list(range(N))
+        np.random.shuffle(indices)
+        indices = {
+            'train': indices[:N//2],
+            'test': indices[N//2:]
+        }
+        # indices_train = set(np.random.choice(np.arange(N), size=N//2,replace=False))
+        # idx = {
+        #     'train': 0,
+        #     'test': 0,
+        # }
+        # countryName2clsIdx = {}
         for phase in ['train','test']:
             (self.dataset_dir/phase/'gallery').mkdir(parents=True)
-        for i in tqdm(range(len(df))):
-            url = df.loc[i,"ImageURL"]
-            filename = df.loc[i, "Country"] + '.svg'
-            if i in indices_train:
-                phase = 'train'
-            else:
-                phase = 'test'
-            filename = str(self.dataset_dir / phase / 'gallery' / filename)
-            try:
-                urlretrieve(url, filename=filename)
-            except:
-                print("file {}:{} not found. Ignored!".format(i,url))
+            for i in tqdm(indices[phase]):
+                url = df.loc[i,"ImageURL"]
+                countryName = df.loc[i, "Country"]
+                filename = str(self.dataset_dir / phase / 'gallery' / '{}.svg'.format(countryName))
+                try:
+                    urlretrieve(url, filename=filename)
+                    # countryName2clsIdx[countryName] = idx[phase]
+                    # idx[phase] += 1
+                except KeyboardInterrupt:
+                    break
+                except:
+                    print("file {}:{} not found. Ignored!".format(i,url))
+            # jsonStr = json.dumps(countryName2clsIdx)
+            # with open(str(self.dataset_dir/phase/'gallery'/'countryName2clsIdx.json'), 'w') as hd:
+            #     hd.write(jsonStr)
+        # for i in tqdm(range(len(df))):
+        #     url = df.loc[i,"ImageURL"]
+        #     filename = df.loc[i, "Country"] + '.svg'
+        #     if i in indices_train:
+        #         phase = 'train'
+        #     else:
+        #         phase = 'test'
+        #     filename = str(self.dataset_dir / phase / 'gallery' / filename)
+        #     try:
+        #         urlretrieve(url, filename=filename)
+        #     except KeyboardInterrupt:
+        #         break
+        #     except:
+        #         print("file {}:{} not found. Ignored!".format(i,url))
 
     def convertSvgToPng(self):
         from cairosvg import svg2png
+        idx = {
+            'train': 0,
+            'test': 0,
+        }
+        countryName2clsIdx = {}
         for phase in ['train','test']:
             for svgFile in tqdm((self.dataset_dir/phase/'gallery').glob('*.svg')):
                 bstr = open(str(svgFile),'rb').read()
                 try:
-                    svg2png(bytestring=bstr, write_to=str(svgFile).replace('.svg','.png'))
+                    countryName = svgFile.name.replace('.svg','')
+                    save_path = svgFile.parent / '{}.png'.format(idx[phase])
+                    svg2png(bytestring=bstr, write_to=str(save_path))
+                    countryName2clsIdx[countryName] = idx[phase]
+                    idx[phase] += 1
                 except:
                     print('Fail to convert {}. Ignored!'.format(svgFile.name))
+            jsonStr = json.dumps(countryName2clsIdx)
+            with open(str(self.dataset_dir/phase/'gallery'/'countryName2clsIdx.json'), 'w') as hd:
+                hd.write(jsonStr)
         
     def load_gallery(self, phase, suffix=""):
         gallery_dir = self.dataset_dir / phase / 'gallery'
@@ -122,15 +164,26 @@ class FlagBuilder:
         for path in gallery_dir.glob('*{}'.format(suffix)):
             ind = int(path.name.split('.')[0])
             img = self.load_image(str(path))
+            img[img == 0] = 1
             gallery[ind] = img
         return gallery
 
     def random_insert_flag(self, img, flag, scale=0.25, prevbboxes=None):
         size = min(img.shape[:2])
-        flag_height = size * scale
+        flag_height, flag_width = flag.shape[:2]
+        flag_size = max(flag.shape[:2])
+        scale = size * scale / flag_size
+        flag_height *= scale
+        flag_width *= scale
+
         flag_scale = np.random.uniform(0.7, 1.3)
-        flag_width = int(flag_height * flag_scale)
-        flag_height = int(flag_height)
+        flag_height *= flag_scale
+        flag_height, flag_width = int(flag_height), int(flag_width)
+
+        # flag_height = size * scale
+        # flag_scale = np.random.uniform(0.7, 1.3)
+        # flag_width = int(flag_height * flag_scale)
+        # flag_height = int(flag_height)
 
         while True:
             pos = (np.random.choice(size-flag_height), np.random.choice(size-flag_width))
@@ -181,35 +234,50 @@ class FlagBuilder:
         img[bbox[1]:bbox[3], bbox[0]:bbox[2]] += flag
         return img[:size, :size], bbox
 
-    def build(self, name, iter_img_paths, gallery='random', num_flags=1, exist_ok=False, num_train_classes=100, num_test_classes=100, 
+    def build(self, name, iter_img_paths, gallery='random', num_flags=1, num_train_classes=100, num_test_classes=100, 
                 scaleRange=None,iter_loop=1):
         self.dataset_dir = self.root_dir / 'data' / name
-        try:
-            self.dataset_dir.mkdir(exist_ok=exist_ok)
-        except:
-            raise Exception("{} exists!".format(name))
-
-        if gallery == 'random':
-            self.build_randomGallery(num_train_classes, num_test_classes)
-        elif gallery == 'nationalFlag':
-            if not exist_ok:
+        if not self.dataset_dir.exists():
+            if gallery == 'random':
+                self.build_randomGallery(num_train_classes, num_test_classes)
+            elif gallery == 'nationalFlag':
+                # if not exist_ok:
                 self.build_countryFlagGallery()
-            self.convertSvgToPng()
-            from IPython import embed
-            embed()
-            raise Exception
+                self.convertSvgToPng()
+            else:
+                raise ValueError('No {} gallery'.format(gallery))
+            print("Built train and test galleries!")
         else:
-            raise ValueError('No {} gallery'.format(gallery))
-        print("Built train and test galleries!")
+            print("{} already exists!".format(self.dataset_dir.name))
 
-        train_gallery = self.load_gallery('train')
-        test_gallery = self.load_gallery('test')
+        phaseList = []
+        for phase in ['train','validation','test']:
+            imgs_dir = self.dataset_dir / phase / 'imgs'
+            if not imgs_dir.exists():
+                imgs_dir.mkdir(parents=True)
+                phaseList.append(phase)
+            else:
+                overwriteFlag = 'a'
+                while overwriteFlag not in ['y','n']:
+                    overwriteFlag = input("{} dataset already exists! Continue to overwrite or not? (y/n)".format(phase))
+                    if overwriteFlag == 'y':
+                        phaseList.append(phase)
+                        shutil.rmtree(str(imgs_dir))
+                        print("Removed",str(imgs_dir))
+                        imgs_dir.mkdir(parents=True)
+                    elif overwriteFlag == 'n':
+                        print("ignore {} dataset".format(phase))
+                    else: 
+                        print("invalid input: {}".format(overwriteFlag))
+        print('generating the following datasets:')
+        print(phaseList)
+
+        train_gallery = self.load_gallery('train',suffix='.png')
+        test_gallery = self.load_gallery('test',suffix='.png')
         flagIndicesDict = {
             'train': list(train_gallery.keys()),
             'test': list(test_gallery.keys()),
         }
-        for phase in ['train','validation','test']:
-            (self.dataset_dir / phase / 'imgs').mkdir(parents=True)
         infoListDict = {
             'train': [],
             'validation': [],
@@ -218,7 +286,7 @@ class FlagBuilder:
 
         for idx, path in tqdm(enumerate(iter_img_paths)):
             image = self.load_image(str(path))
-            for phase in ['train','validation','test']:
+            for phase in phaseList:
                 if phase=='train':
                     loop = iter_loop
                 else:
@@ -251,27 +319,6 @@ class FlagBuilder:
                         'phase': phase,
                     }
                     infoListDict[phase].append(info)
-
-
-
-                    # flagIdx = np.random.choice(flagIndices,size=num_flags)
-                    # flag = gallery[flagIdx].copy()
-                    # if scaleRange is None:
-                    #     scale = 0.25
-                    # else:
-                    #     scale = np.random.uniform(scaleRange[0], scaleRange[1])
-                    # img, bbox = self.center_insert_flag(img, flag, scale, random=True)
-                    # save_path = imgs_dir / '{}-{}.png'.format(idx,i)
-                    # self.save_image(img, str(save_path))
-                    # info = {
-                    #     # 'index': idx,
-                    #     'label': int(flagIdx),
-                    #     'path': str(save_path),
-                    #     'source': str(path),
-                    #     'bbox': bbox,
-                    #     'phase': phase,
-                    # }
-                    # infoListDict[phase].append(info)
         import json
         for phase in ['train','validation','test']:
             jsonStr = json.dumps(infoListDict[phase])
