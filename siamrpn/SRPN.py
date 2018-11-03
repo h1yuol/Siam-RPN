@@ -3,10 +3,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class SiameseRPN(nn.Module):
-    def __init__(self,pseudo):
+    def __init__(self,pseudo,cbam):
         super(SiameseRPN, self).__init__()
         self.k = 5
         self.pseudo = pseudo
+        self.cbam = cbam
         self._build()
         self.reset_params()
         self._fix_layers()
@@ -39,6 +40,16 @@ class SiameseRPN(nn.Module):
         normal_init(self.conv4, 0, 0.001, False)
         # normal_init(self.cconv, 0, 0.001, False, False)
         # normal_init(self.rconv, 0, 0.001, False, False)
+
+        if self.cbam:
+            for m in self.cbamLayer.modules():
+                if isinstance(m, nn.Conv2d):
+                    nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                elif isinstance(m, nn.BatchNorm2d):
+                    nn.init.constant_(m.weight, 1)
+                    nn.init.constant_(m.bias, 0)
+                elif isinstance(m, nn.Linear):
+                    nn.init.kaiming_normal_(m.weight)
             
 #     def forward(self, template, detection, debug=False):
 #         if self.pseudo:
@@ -73,6 +84,8 @@ class SiameseRPN(nn.Module):
         else:
             template = self.features(template)
         detection = self.features(detection)
+        if self.cbam:
+            detection = self.cbamLayer(detection)
         
         N = template.size()[0]
 

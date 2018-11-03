@@ -7,6 +7,7 @@ import torch.utils.model_zoo as model_zoo
 import pdb
 
 from siamrpn.SRPN import SiameseRPN
+from siamrpn.cbam import CBAM
 
 __all__ = ['ResNet', 'resnet18', 'resnet34', 'resnet50', 'resnet101',
        'resnet152']
@@ -221,7 +222,7 @@ def resnet152(pretrained=False, num_groups=32, GN=False):
   return model
 
 class resnet(SiameseRPN):
-    def __init__(self, num_layers,pseudo=False, num_groups=32, GN=False):
+    def __init__(self, num_layers,pseudo=False, num_groups=32, GN=False, cbam=False):
         self.num_layers = num_layers
         self.channel_depth = {
             18: 256,
@@ -232,7 +233,7 @@ class resnet(SiameseRPN):
         }[num_layers]
         self.num_groups = num_groups
         self.GN = GN
-        SiameseRPN.__init__(self,pseudo=pseudo)
+        SiameseRPN.__init__(self,pseudo=pseudo,cbam=cbam)
 
     def _build(self):
         resnet = eval('resnet{}'.format(self.num_layers))(num_groups=self.num_groups, GN=self.GN)
@@ -244,6 +245,9 @@ class resnet(SiameseRPN):
             resnet2 = eval('resnet{}'.format(self.num_layers))(num_groups=self.num_groups, GN=self.GN)
             self.features2 = nn.Sequential(resnet2.conv1, resnet2.bn1,resnet2.relu,
                             resnet2.maxpool,resnet2.layer1,resnet2.layer2,resnet2.layer3)
+
+        if self.cbam:
+            self.cbamLayer = CBAM(self.channel_depth, reduction_ratio=16, pool_types=['avg', 'max'], no_spatial=False)
 
         self.conv1 = nn.Conv2d(self.channel_depth, 2*self.k*self.channel_depth, kernel_size=3)
         # self.relu1 = nn.ReLU(inplace=True)
