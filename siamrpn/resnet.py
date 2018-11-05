@@ -222,7 +222,7 @@ def resnet152(pretrained=False, num_groups=32, GN=False):
   return model
 
 class resnet(SiameseRPN):
-    def __init__(self, num_layers,pseudo=False, num_groups=32, GN=False, cbam=False):
+    def __init__(self, num_layers,num_anchors,pseudo=False, num_groups=32, GN=False, cbam=False):
         self.num_layers = num_layers
         self.channel_depth = {
             18: 256,
@@ -233,7 +233,7 @@ class resnet(SiameseRPN):
         }[num_layers]
         self.num_groups = num_groups
         self.GN = GN
-        SiameseRPN.__init__(self,pseudo=pseudo,cbam=cbam)
+        SiameseRPN.__init__(self,pseudo=pseudo,cbam=cbam,num_anchors=num_anchors)
 
     def _build(self):
         resnet = eval('resnet{}'.format(self.num_layers))(num_groups=self.num_groups, GN=self.GN)
