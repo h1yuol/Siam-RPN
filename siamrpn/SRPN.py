@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class SiameseRPN(nn.Module):
-    def __init__(self,pseudo,cbam):
+    def __init__(self,pseudo,cbam,num_anchors):
         super(SiameseRPN, self).__init__()
-        self.k = 5
+        self.k = num_anchors
         self.pseudo = pseudo
         self.cbam = cbam
         self._build()
