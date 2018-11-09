@@ -97,16 +97,16 @@ def xywh_to_x1y1x2y2_torch(xywh):
     xywh[:,:,2] = xywh[:,:,0] + xywh[:,:,2]
     xywh[:,:,3] = xywh[:,:,1] + xywh[:,:,3]
 
-def get_anchors(k, grid_len, detection_size, anchor_shape, cuda=False):
+def get_anchors(k, grid_len, detection_size, anchor_shape, num_grids, cuda=False):
     """
     Output:
         anchors: torch Tensor (1, k, 4, 17, 17)
     """
-    anchors = torch.zeros((1, k, 4, 17, 17))
+    anchors = torch.zeros((1, k, 4, num_grids, num_grids))
     if cuda:
         anchors = anchors.cuda()
-    for a in range(17):
-        for b in range(17):
+    for a in range(num_grids):
+        for b in range(num_grids):
             for c in range(k):
                 anchor = [grid_len//2+grid_len*a, grid_len//2+grid_len*b, anchor_shape[c][0], anchor_shape[c][1]]
                 anchor_x1y1x2y2 = xywh_to_x1y1x2y2(anchor)

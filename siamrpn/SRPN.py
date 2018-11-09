@@ -92,18 +92,18 @@ class SiameseRPN(nn.Module):
         N = template.size()[0]
 
         ckernal = self.conv1(template)
-        ckernal = ckernal.view(N*2*self.k, self.channel_depth, 4, 4)
+        ckernal = ckernal.view(N*2*self.k, self.channel_depth, ckernal.size()[-1], ckernal.size()[-1])
         cinput = self.conv3(detection)
-        cinput = cinput.view(1, self.channel_depth*N, 20, 20)
+        cinput = cinput.view(1, self.channel_depth*N, cinput.size()[-1], cinput.size()[-1])
         coutput = F.conv2d(cinput, ckernal, bias=None, groups=N)  # shape (1, 2k*N, 17, 17)
-        coutput = coutput.view(N, 2*self.k, 17, 17)
+        coutput = coutput.view(N, 2*self.k, coutput.size()[-1], coutput.size()[-1])
 
         rkernal = self.conv2(template)
-        rkernal = rkernal.view(N*4*self.k, self.channel_depth, 4, 4)
+        rkernal = rkernal.view(N*4*self.k, self.channel_depth, rkernal.size()[-1], rkernal.size()[-1])
         rinput = self.conv4(detection)
-        rinput = rinput.view(1, self.channel_depth*N, 20, 20)
+        rinput = rinput.view(1, self.channel_depth*N, rinput.size()[-1], rinput.size()[-1])
         routput = F.conv2d(rinput, rkernal, bias=None, groups=N)  # shape (1, 4k*N, 17, 17)
-        routput = routput.view(N, 4*self.k, 17, 17)
+        routput = routput.view(N, 4*self.k, routput.size()[-1], routput.size()[-1])
 
         if debug:
             # raise NotImplementedError
