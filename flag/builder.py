@@ -65,8 +65,11 @@ class FlagBuilder:
         self.transforms = transforms.Compose([
                     transforms.ToPILImage(),
                     # transforms.RandomRotation(15,expand=np.random.uniform()>0.5),
-                    # transforms.ColorJitter(0.5,0.5,0.5,0.1),
-                    transforms.RandomAffine(15,shear=20),
+                    transforms.RandomAffine(20,shear=25),
+                ])
+        self.colorjitter = transforms.Compose([
+                    transforms.ToPILImage(),
+                    transforms.ColorJitter(brightness=0.1,contrast=0.1),
                 ])
 
     def load_image(self, img_path):
@@ -95,8 +98,8 @@ class FlagBuilder:
         indices = list(range(N))
         np.random.shuffle(indices)
         indices = {
-            'train': indices[:N//2],
-            'test': indices[N//2:]
+            'test': indices[:N//4],
+            'train': indices[N//4:]
         }
         # indices_train = set(np.random.choice(np.arange(N), size=N//2,replace=False))
         # idx = {
@@ -165,6 +168,8 @@ class FlagBuilder:
             ind = int(path.name.split('.')[0])
             img = self.load_image(str(path))
             img[img == 0] = 1
+            size = min(img.shape[:2])
+            img = cv2.resize(img, dsize=(size, size))
             gallery[ind] = img
         return gallery
 
@@ -184,8 +189,9 @@ class FlagBuilder:
         # flag_scale = np.random.uniform(0.7, 1.3)
         # flag_width = int(flag_height * flag_scale)
         # flag_height = int(flag_height)
-
-        while True:
+        count = 0
+        while count < 20:
+            count += 1
             pos = (np.random.choice(size-flag_height), np.random.choice(size-flag_width))
             bbox = [pos[1],pos[0],pos[1]+flag_width,pos[0]+flag_height]  # xmin, ymin, xmax, ymax
             overlap = False
@@ -197,26 +203,33 @@ class FlagBuilder:
                         break
             if not overlap:
                 break
-        flag = np.array(self.transforms(flag))
-        flag = cv2.resize(flag, dsize=(flag_width, flag_height))
+        if count < 20:
+            flag = np.array(self.transforms(flag))
+            flag = cv2.resize(flag, dsize=(flag_width, flag_height))
+            mask = (flag==0)
+            flag = np.array(self.colorjitter(flag))
+            
 
-        mask = (flag==0)
-        img[bbox[1]:bbox[3], bbox[0]:bbox[2]] *= mask
-        img[bbox[1]:bbox[3], bbox[0]:bbox[2]] += flag
-        return img[:size, :size], bbox
+            img[bbox[1]:bbox[3], bbox[0]:bbox[2]] *= mask
+            img[bbox[1]:bbox[3], bbox[0]:bbox[2]] += flag
+            return img[:size, :size], bbox
+        else:
+            return img[:size, :size], None
     
     def random_insert_multiflags(self, img, flagList, scaleRange):
         bboxList = []
         for flag in flagList:
             scale = np.random.uniform(scaleRange[0], scaleRange[1])
             img, bbox = self.random_insert_flag(img, flag.copy(), scale=scale, prevbboxes=bboxList)
+            if bbox is None:
+                break
             bboxList.append(bbox)
         return img, bboxList
 
     def center_insert_flag(self, img, flag, scale=0.25, random=False):
         size = min(img.shape[:2])
         flag_height = size * scale
-        flag_scale = np.random.uniform(0.7, 1.3)
+        flag_scale = np.random.uniform(0.5, 2)
         flag_width = int(flag_height * flag_scale)
         flag_height = int(flag_height)
 
