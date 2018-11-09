@@ -110,7 +110,7 @@ def get_anchors(k, grid_len, detection_size, anchor_shape, num_grids, cuda=False
             for c in range(k):
                 anchor = [grid_len//2+grid_len*a, grid_len//2+grid_len*b, anchor_shape[c][0], anchor_shape[c][1]]
                 anchor_x1y1x2y2 = xywh_to_x1y1x2y2(anchor)
-                anchor_x1y1x2y2 = clip_anchor(anchor_x1y1x2y2,detection_size)
+                # anchor_x1y1x2y2 = clip_anchor(anchor_x1y1x2y2,detection_size)
                 anchor = x1y1x2y2_to_xywh(anchor_x1y1x2y2)
                 anchors[0,c,:,a,b] = torch.Tensor(anchor).cuda()
     return anchors
