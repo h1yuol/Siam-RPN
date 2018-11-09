@@ -8,6 +8,7 @@ from tqdm import tqdm
 import datetime
 import shutil
 import json
+from pprint import pprint
 
 from torchvision import transforms
 
@@ -216,15 +217,18 @@ class FlagBuilder:
         else:
             return img[:size, :size], None
     
-    def random_insert_multiflags(self, img, flagList, scaleRange):
+    def random_insert_multiflags(self, img, flagList, scaleRange, flagIndices):
         bboxList = []
-        for flag in flagList:
+        labelList = []
+        for label, flag in zip(flagIndices, flagList):
+            label = int(label)
             scale = np.random.uniform(scaleRange[0], scaleRange[1])
             img, bbox = self.random_insert_flag(img, flag.copy(), scale=scale, prevbboxes=bboxList)
             if bbox is None:
                 break
             bboxList.append(bbox)
-        return img, bboxList
+            labelList.append(label)
+        return img, bboxList, labelList
 
     def center_insert_flag(self, img, flag, scale=0.25, random=False):
         size = min(img.shape[:2])
@@ -315,28 +319,35 @@ class FlagBuilder:
                         img = image.copy()
                     imgs_dir = self.dataset_dir / phase / 'imgs'
                     flagIndices = np.random.choice(flagIndices,size=num_flags)
-                    flagList = list(map(lambda idx: gallery[idx], flagIndices))
-                    if scaleRange is None:
-                        scale = 0.25
-                        img, bboxList = self.random_insert_multiflags(img,flagList,[scale-0.05,scale+0.05])
-                    else:
-                        img, bboxList = self.random_insert_multiflags(img,flagList,scaleRange)
+                    flagList = list(map(lambda i: gallery[i], flagIndices))
+                    # if scaleRange is None:
+                    #     scale = 0.25
+                    #     img, bboxList = self.random_insert_multiflags(img,flagList,[scale-0.05,scale+0.05])
+                    # else:
+                    #     img, bboxList = self.random_insert_multiflags(img,flagList,scaleRange)
+                    assert scaleRange is not None
+                    img, bboxList, labelList = self.random_insert_multiflags(img,flagList,scaleRange,flagIndices)
                     save_path = imgs_dir / '{}-{}.png'.format(idx,i)
                     self.save_image(img, str(save_path))
                     info = {
                         # 'index': idx,
-                        'labelList': flagIndices.tolist(),
+                        'labelList': labelList,
                         'path': str(save_path),
                         'source': str(path),
                         'bboxList': bboxList,
                         'phase': phase,
                     }
                     infoListDict[phase].append(info)
-        import json
-        for phase in ['train','validation','test']:
-            jsonStr = json.dumps(infoListDict[phase])
-            with open(str(self.dataset_dir / phase / 'infoList.json'), 'w') as hd:
-                hd.write(jsonStr)
+                    if idx == 0:
+                        pprint(info)
+        try:
+            for phase in ['train','validation','test']:
+                jsonStr = json.dumps(infoListDict[phase])
+                with open(str(self.dataset_dir / phase / 'infoList.json'), 'w') as hd:
+                    hd.write(jsonStr)
+        except:
+            from IPython import embed
+            embed()
 
     # def build_train_dataset(self, name, iter_img_paths, exist_ok=False, num_train_classes=100, num_test_classes=100, 
     #             scaleRange=None):
