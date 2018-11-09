@@ -115,6 +115,23 @@ def get_anchors(k, grid_len, detection_size, anchor_shape, cuda=False):
                 anchors[0,c,:,a,b] = torch.Tensor(anchor).cuda()
     return anchors
 
+def regression_adjust(routput, anchors):
+    """
+    Input:
+        anchors: (1, k, 4, 17, 17)  xywh
+        routput: (N, k, 4, 17, 17)  xywh
+    Output:
+        bboxes: (N, k, 4, 17, 17) 
+    """
+    bboxes = torch.zeros(routput.shape).cuda()
+    bboxes[:,:,0] = routput[:,:,0]*anchors[:,:,2] + anchors[:,:,0]
+    bboxes[:,:,1] = routput[:,:,1]*anchors[:,:,3] + anchors[:,:,1]
+    bboxes[:,:,2] = torch.exp(routput[:,:,2])*anchors[:,:,2]
+    bboxes[:,:,3] = torch.exp(routput[:,:,3])*anchors[:,:,3]
+    xywh_to_x1y1x2y2_torch(bboxes)
+    # bboxes = bboxes.long()
+    return bboxes
+
 def nms(boxes, scores, overlap=0.5, top_k=200):
     """
     Input:
@@ -177,19 +194,5 @@ def nms(boxes, scores, overlap=0.5, top_k=200):
         # keep only elements with an IoU <= overlap
         idx = idx[IoU.le(overlap)]
     return keep, count
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
