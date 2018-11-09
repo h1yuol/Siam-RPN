@@ -320,7 +320,7 @@ if __name__ == '__main__':
     #     x = base(x)
     #     print('size:',size,x.size())
 
-    model = resnet(34,GN=False)
+    model = resnet(34,GN=False,num_anchors=5)
     N = 32
     template = torch.randn(N,3,96,96)
     detection = torch.randn(N,3,340,340)
