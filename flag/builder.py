@@ -230,26 +230,26 @@ class FlagBuilder:
             labelList.append(label)
         return img, bboxList, labelList
 
-    def center_insert_flag(self, img, flag, scale=0.25, random=False):
-        size = min(img.shape[:2])
-        flag_height = size * scale
-        flag_scale = np.random.uniform(0.5, 2)
-        flag_width = int(flag_height * flag_scale)
-        flag_height = int(flag_height)
+    # def center_insert_flag(self, img, flag, scale=0.25, random=False):
+    #     size = min(img.shape[:2])
+    #     flag_height = size * scale
+    #     flag_scale = np.random.uniform(0.5, 2)
+    #     flag_width = int(flag_height * flag_scale)
+    #     flag_height = int(flag_height)
 
-        if random:
-            pos = (np.random.choice(size-flag_height), np.random.choice(size-flag_width))
-        else:
-            pos = ((size - flag_height)//2 , (size - flag_width)//2)
-        bbox = [pos[1],pos[0],pos[1]+flag_width,pos[0]+flag_height]  # xmin, ymin, xmax, ymax
+    #     if random:
+    #         pos = (np.random.choice(size-flag_height), np.random.choice(size-flag_width))
+    #     else:
+    #         pos = ((size - flag_height)//2 , (size - flag_width)//2)
+    #     bbox = [pos[1],pos[0],pos[1]+flag_width,pos[0]+flag_height]  # xmin, ymin, xmax, ymax
 
-        flag = np.array(self.transforms(flag))
-        flag = cv2.resize(flag, dsize=(flag_width, flag_height))
+    #     flag = np.array(self.transforms(flag))
+    #     flag = cv2.resize(flag, dsize=(flag_width, flag_height))
 
-        mask = (flag==0)
-        img[bbox[1]:bbox[3], bbox[0]:bbox[2]] *= mask
-        img[bbox[1]:bbox[3], bbox[0]:bbox[2]] += flag
-        return img[:size, :size], bbox
+    #     mask = (flag==0)
+    #     img[bbox[1]:bbox[3], bbox[0]:bbox[2]] *= mask
+    #     img[bbox[1]:bbox[3], bbox[0]:bbox[2]] += flag
+    #     return img[:size, :size], bbox
 
     def build(self, name, iter_img_paths, gallery='random', num_flags=1, num_train_classes=100, num_test_classes=100, 
                 scaleRange=None,iter_loop=1):
@@ -348,112 +348,6 @@ class FlagBuilder:
         except:
             from IPython import embed
             embed()
-
-    # def build_train_dataset(self, name, iter_img_paths, exist_ok=False, num_train_classes=100, num_test_classes=100, 
-    #             scaleRange=None):
-    #     self.dataset_dir = self.root_dir / 'data' / name
-    #     try:
-    #         self.dataset_dir.mkdir(exist_ok=exist_ok)
-    #     except:
-    #         raise Exception("{} exists!".format(name))
-
-    #     self.build_randomGallery(num_train_classes, num_test_classes)
-    #     print("Built train and test galleries!")
-
-    #     phase = 'train'
-    #     imgs_dir = self.dataset_dir / phase / 'imgs'
-    #     imgs_dir.mkdir()
-
-    #     gallery = self.load_gallery(phase)
-    #     flagIndices = list(gallery.keys())
-    #     infoList = []
-    #     for idx, path in tqdm(enumerate(iter_img_paths)):
-    #         img = self.load_image(str(path))
-    #         flagIdx = np.random.choice(flagIndices)
-    #         flag = gallery[flagIdx].copy()
-    #         if scaleRange is None:
-    #             scale = 0.25
-    #         img, bbox = self.center_insert_flag(img, flag, scale)
-    #         save_path = imgs_dir / '{}.png'.format(idx)
-    #         self.save_image(img, str(save_path))
-    #         info = {
-    #             'index': idx,
-    #             'label': int(flagIdx),
-    #             'path': str(save_path),
-    #             'source': str(path),
-    #             'bbox': bbox,
-    #         }
-    #         infoList.append(info)
-    #     import json
-    #     jsonStr = json.dumps(infoList)
-    #     with open(str(self.dataset_dir / phase / 'infoList.json'), 'w') as hd:
-    #         hd.write(jsonStr)
-
-    # def build_val_dataset(self, name, iter_img_paths, scaleRange=None):
-    #     self.dataset_dir = self.root_dir / 'data' / name
-    #     assert self.dataset_dir.exists()
-        
-    #     phase = 'validation'
-    #     imgs_dir = self.dataset_dir / phase / 'imgs'
-    #     imgs_dir.mkdir(parents=True)
-
-    #     gallery = self.load_gallery('train')
-    #     flagIndices = list(gallery.keys())
-    #     infoList = []
-    #     for idx, path in tqdm(enumerate(iter_img_paths)):
-    #         img = self.load_image(str(path))
-    #         flagIdx = np.random.choice(flagIndices)
-    #         flag = gallery[flagIdx].copy()
-    #         if scaleRange is None:
-    #             scale = 0.25
-    #         img, bbox = self.center_insert_flag(img, flag, scale, random=True)
-    #         save_path = imgs_dir / '{}.png'.format(idx)
-    #         self.save_image(img, str(save_path))
-    #         info = {
-    #             'index': idx,
-    #             'label': int(flagIdx),
-    #             'path': str(save_path),
-    #             'source': str(path),
-    #             'bbox': bbox,
-    #         }
-    #         infoList.append(info)
-    #     import json
-    #     jsonStr = json.dumps(infoList)
-    #     with open(str(self.dataset_dir / phase / 'infoList.json'), 'w') as hd:
-    #         hd.write(jsonStr)
-
-    # def build_test_dataset(self, name, iter_img_paths, scaleRange=None):
-    #     self.dataset_dir = self.root_dir / 'data' / name
-    #     assert self.dataset_dir.exists()
-        
-    #     phase = 'test'
-    #     imgs_dir = self.dataset_dir / phase / 'imgs'
-    #     imgs_dir.mkdir()
-
-    #     gallery = self.load_gallery(phase)
-    #     flagIndices = list(gallery.keys())
-    #     infoList = []
-    #     for idx, path in tqdm(enumerate(iter_img_paths)):
-    #         img = self.load_image(str(path))
-    #         flagIdx = np.random.choice(flagIndices)
-    #         flag = gallery[flagIdx].copy()
-    #         if scaleRange is None:
-    #             scale = 0.25
-    #         img, bbox = self.center_insert_flag(img, flag, scale, random=True)
-    #         save_path = imgs_dir / '{}.png'.format(idx)
-    #         self.save_image(img, str(save_path))
-    #         info = {
-    #             'index': idx,
-    #             'label': int(flagIdx),
-    #             'path': str(save_path),
-    #             'source': str(path),
-    #             'bbox': bbox,
-    #         }
-    #         infoList.append(info)
-    #     import json
-    #     jsonStr = json.dumps(infoList)
-    #     with open(str(self.dataset_dir / phase / 'infoList.json'), 'w') as hd:
-    #         hd.write(jsonStr)
 
 
 
