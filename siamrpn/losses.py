@@ -69,8 +69,9 @@ class Myloss(Module):
 
         rloss = F.smooth_l1_loss(routput, rlabel, size_average=False, reduce=False)  # (bs, 20, 17, 17)
         
+        C = rlabel.size()[1]
         eq = (clabel==1).unsqueeze(2).float()  # (bs, 5, 1, 17, 17)
-        rloss = rloss.view(-1,5,4,17,17).mul(eq).sum()  # scalar
+        rloss = rloss.view(-1,C//4,4,17,17).mul(eq).sum()  # scalar
         rloss = torch.div(rloss, eq.nonzero().shape[0]*4+1e-4)  # average over all non-zero rloss term
 
         loss = torch.add(closs, lmbda, rloss)
